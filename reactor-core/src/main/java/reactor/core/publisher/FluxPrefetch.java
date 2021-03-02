@@ -86,17 +86,15 @@ final class FluxPrefetch<T> extends InternalFluxOperator<T, T> implements Fuseab
 
 		private Throwable error;
 
-		volatile     int                                                        wip;
+		volatile     int                                           wip;
 		@SuppressWarnings("rawtypes")
-		static final AtomicIntegerFieldUpdater<FluxPrefetch.PrefetchSubscriber> WIP =
-				AtomicIntegerFieldUpdater.newUpdater(FluxPrefetch.PrefetchSubscriber.class,
-						"wip");
+		static final AtomicIntegerFieldUpdater<PrefetchSubscriber> WIP =
+				AtomicIntegerFieldUpdater.newUpdater(PrefetchSubscriber.class, "wip");
 
-		volatile     long                                                    requested;
+		volatile     long                                       requested;
 		@SuppressWarnings("rawtypes")
-		static final AtomicLongFieldUpdater<FluxPrefetch.PrefetchSubscriber> REQUESTED =
-				AtomicLongFieldUpdater.newUpdater(FluxPrefetch.PrefetchSubscriber.class,
-						"requested");
+		static final AtomicLongFieldUpdater<PrefetchSubscriber> REQUESTED =
+				AtomicLongFieldUpdater.newUpdater(PrefetchSubscriber.class, "requested");
 
 		private int fusionMode;
 
@@ -515,18 +513,16 @@ final class FluxPrefetch<T> extends InternalFluxOperator<T, T> implements Fuseab
 
 		private Throwable error;
 
-		volatile     int wip;
+		volatile     int                                                      wip;
 		@SuppressWarnings("rawtypes")
-		static final AtomicIntegerFieldUpdater<FluxPrefetch.PrefetchConditionalSubscriber>
-		                 WIP =
-				AtomicIntegerFieldUpdater.newUpdater(FluxPrefetch.PrefetchConditionalSubscriber.class,
+		static final AtomicIntegerFieldUpdater<PrefetchConditionalSubscriber> WIP =
+				AtomicIntegerFieldUpdater.newUpdater(PrefetchConditionalSubscriber.class,
 						"wip");
 
-		volatile     long requested;
+		volatile     long                                                  requested;
 		@SuppressWarnings("rawtypes")
-		static final AtomicLongFieldUpdater<FluxPrefetch.PrefetchConditionalSubscriber>
-		                  REQUESTED =
-				AtomicLongFieldUpdater.newUpdater(FluxPrefetch.PrefetchConditionalSubscriber.class,
+		static final AtomicLongFieldUpdater<PrefetchConditionalSubscriber> REQUESTED =
+				AtomicLongFieldUpdater.newUpdater(PrefetchConditionalSubscriber.class,
 						"requested");
 
 		private int fusionMode;
