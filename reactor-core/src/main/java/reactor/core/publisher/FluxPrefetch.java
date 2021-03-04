@@ -41,7 +41,12 @@ final class FluxPrefetch<T> extends InternalFluxOperator<T, T> implements Fuseab
 		this.requestMode = requestMode;
 	}
 
-	//	TODO: getPrefetch, scanUnsafe
+	//	TODO: scanUnsafe
+
+	@Override
+	public int getPrefetch() {
+		return prefetch;
+	}
 
 	@Override
 	public CoreSubscriber<? super T> subscribeOrReturn(CoreSubscriber<? super T> actual) {
@@ -141,13 +146,16 @@ final class FluxPrefetch<T> extends InternalFluxOperator<T, T> implements Fuseab
 					if (mode == Fuseable.ASYNC) {
 						fusionMode = Fuseable.ASYNC;
 						queue = fusion;
+						actual.onSubscribe(this);
+						if (requestMode == RequestMode.EAGER) {
+							s.request(Operators.unboundedOrPrefetch(prefetch));
+						}
+						return;
 					}
 				}
 			}
-			else {
-				queue = queueSupplier.get();
-			}
 
+			queue = queueSupplier.get();
 			actual.onSubscribe(this);
 			if (requestMode == RequestMode.EAGER) {
 				s.request(Operators.unboundedOrPrefetch(prefetch));
@@ -240,10 +248,10 @@ final class FluxPrefetch<T> extends InternalFluxOperator<T, T> implements Fuseab
 				if (done) {
 					Throwable err = error;
 					if (err != null) {
-						onError(err);
+						actual.onError(err);
 					}
 					else {
-						onComplete();
+						actual.onComplete();
 					}
 					return;
 				}
@@ -269,7 +277,7 @@ final class FluxPrefetch<T> extends InternalFluxOperator<T, T> implements Fuseab
 						value = queue.poll();
 					}
 					catch (Throwable err) {
-						onError(Operators.onOperatorError(s,
+						actual.onError(Operators.onOperatorError(s,
 								err,
 								actual.currentContext()));
 						return;
@@ -283,7 +291,7 @@ final class FluxPrefetch<T> extends InternalFluxOperator<T, T> implements Fuseab
 						return;
 					}
 					if (value == null) {
-						onComplete();
+						actual.onComplete();
 						return;
 					}
 
@@ -300,7 +308,7 @@ final class FluxPrefetch<T> extends InternalFluxOperator<T, T> implements Fuseab
 				}
 
 				if (queue.isEmpty()) {
-					onComplete();
+					actual.onComplete();
 					return;
 				}
 
@@ -339,7 +347,8 @@ final class FluxPrefetch<T> extends InternalFluxOperator<T, T> implements Fuseab
 						s.cancel();
 						terminate();
 
-						onError(Operators.onOperatorError(err, actual.currentContext()));
+						actual.onError(Operators.onOperatorError(err,
+								actual.currentContext()));
 						return;
 					}
 
@@ -410,11 +419,11 @@ final class FluxPrefetch<T> extends InternalFluxOperator<T, T> implements Fuseab
 					Operators.onDiscard(value, actual.currentContext());
 					terminate();
 
-					onError(e);
+					actual.onError(e);
 					return true;
 				}
 				else if (empty) {
-					onComplete();
+					actual.onComplete();
 					return true;
 				}
 			}
@@ -672,10 +681,10 @@ final class FluxPrefetch<T> extends InternalFluxOperator<T, T> implements Fuseab
 				if (done) {
 					Throwable err = error;
 					if (err != null) {
-						onError(err);
+						actual.onError(err);
 					}
 					else {
-						onComplete();
+						actual.onComplete();
 					}
 					return;
 				}
@@ -701,7 +710,7 @@ final class FluxPrefetch<T> extends InternalFluxOperator<T, T> implements Fuseab
 						value = queue.poll();
 					}
 					catch (Throwable err) {
-						onError(Operators.onOperatorError(s,
+						actual.onError(Operators.onOperatorError(s,
 								err,
 								actual.currentContext()));
 						return;
@@ -715,7 +724,7 @@ final class FluxPrefetch<T> extends InternalFluxOperator<T, T> implements Fuseab
 						return;
 					}
 					if (value == null) {
-						onComplete();
+						actual.onComplete();
 						return;
 					}
 
@@ -732,7 +741,7 @@ final class FluxPrefetch<T> extends InternalFluxOperator<T, T> implements Fuseab
 				}
 
 				if (queue.isEmpty()) {
-					onComplete();
+					actual.onComplete();
 					return;
 				}
 
@@ -772,7 +781,8 @@ final class FluxPrefetch<T> extends InternalFluxOperator<T, T> implements Fuseab
 						s.cancel();
 						terminate();
 
-						onError(Operators.onOperatorError(err, actual.currentContext()));
+						actual.onError(Operators.onOperatorError(err,
+								actual.currentContext()));
 						return;
 					}
 
@@ -847,11 +857,11 @@ final class FluxPrefetch<T> extends InternalFluxOperator<T, T> implements Fuseab
 					Operators.onDiscard(value, actual.currentContext());
 					terminate();
 
-					onError(e);
+					actual.onError(e);
 					return true;
 				}
 				else if (empty) {
-					onComplete();
+					actual.onComplete();
 					return true;
 				}
 			}
