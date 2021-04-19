@@ -147,7 +147,8 @@ class FluxCreateTest {
 			s.next("test2");
 			s.next("test3");
 			s.complete();
-		}).publishOn(Schedulers.parallel()))
+		}).prefetch()
+                    .publishOn(Schedulers.parallel()))
 		            .expectNext("test1", "test2", "test3")
 		            .verifyComplete();
 
@@ -1078,7 +1079,8 @@ class FluxCreateTest {
 			s.onDispose(() -> queue.close());
 		}, overflowStrategy);
 
-		StepVerifier.create(created.take(count).publishOn(Schedulers.parallel(), 1000))
+		StepVerifier.create(created.take(count).prefetch(1000)
+                    .publishOn(Schedulers.parallel()))
 		            .expectNextCount(count)
 		            .expectComplete()
 		            .verify();
