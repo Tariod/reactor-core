@@ -221,6 +221,9 @@ final class FluxPublishOn<T> extends InternalFluxOperator<T, T> implements Fusea
 					long nextRequested = Operators.addCap(requested, n);
 
 					if (REQUESTED.compareAndSet(this, previousState, nextRequested)) {
+						if (this.sourceMode == Fuseable.ASYNC) {
+							this.s.request(n);
+						}
 						break;
 					}
 				}
