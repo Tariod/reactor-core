@@ -7089,6 +7089,39 @@ public abstract class Flux<T> implements CorePublisher<T> {
 		return onAssembly(new FluxPublishOn<>(this, scheduler, delayError));
 	}
 
+	// Previous publishOn implementation for benchmarking
+	public final Flux<T> publishOnOld(Scheduler scheduler) {
+		return publishOnOld(scheduler, Queues.SMALL_BUFFER_SIZE);
+	}
+
+	public final Flux<T> publishOnOld(Scheduler scheduler, int prefetch) {
+		return publishOnOld(scheduler, true, prefetch);
+	}
+
+	public final Flux<T> publishOnOld(Scheduler scheduler, boolean delayError, int prefetch) {
+		return publishOnOld(scheduler, delayError, prefetch, prefetch);
+	}
+
+	final Flux<T> publishOnOld(Scheduler scheduler, boolean delayError, int prefetch, int lowTide) {
+		if (this instanceof Callable) {
+			if (this instanceof Fuseable.ScalarCallable) {
+				@SuppressWarnings("unchecked")
+				Fuseable.ScalarCallable<T> s = (Fuseable.ScalarCallable<T>) this;
+				try {
+					return onAssembly(new FluxSubscribeOnValue<>(s.call(), scheduler));
+				}
+				catch (Exception e) {
+					//leave FluxSubscribeOnCallable defer exception call
+				}
+			}
+			@SuppressWarnings("unchecked")
+			Callable<T> c = (Callable<T>)this;
+			return onAssembly(new FluxSubscribeOnCallable<>(c, scheduler));
+		}
+
+		return onAssembly(new FluxPublishOnOld<>(this, scheduler, delayError, prefetch, lowTide, Queues.get(prefetch)));
+	}
+
 	/**
 	 * Reduce the values from this {@link Flux} sequence into a single object of the same
 	 * type than the emitted items. Reduction is performed using a {@link BiFunction} that
