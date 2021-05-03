@@ -25,6 +25,7 @@ dependencies {
   baseline "io.projectreactor:reactor-core:${perfBaselineVersion}", {
     changing = true
   }
+  implementation project(':reactor-core')
 }
 
 task jmhProfilers(type: JavaExec, description:'Lists the available profilers for the jmh task', group: 'Development') {
