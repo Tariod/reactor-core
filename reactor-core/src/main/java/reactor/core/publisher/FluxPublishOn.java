@@ -152,8 +152,8 @@ final class FluxPublishOn<T> extends InternalFluxOperator<T, T> implements Fusea
 						qs = f;
 						done = true;
 					}
-					else if (mode == Fuseable.ASYNC) {
-						sourceMode = Fuseable.ASYNC;
+					else if ((mode & Fuseable.ASYNC) != 0) {
+						sourceMode = mode;
 						qs = f;
 					}
 				}
@@ -213,24 +213,32 @@ final class FluxPublishOn<T> extends InternalFluxOperator<T, T> implements Fusea
 		@Override
 		public void request(long n) {
 			if (Operators.validate(n)) {
-				long previousState;
-				for (; ; ) {
-					previousState = this.requested;
+				if (!outputFused) {
+					long previousState;
+					for (; ; ) {
+						previousState = this.requested;
 
-					long requested = previousState & Long.MAX_VALUE;
-					long nextRequested = Operators.addCap(requested, n);
+						long requested = previousState & Long.MAX_VALUE;
+						long nextRequested = Operators.addCap(requested, n);
 
-					if (REQUESTED.compareAndSet(this, previousState, nextRequested)) {
-						break;
+						if (REQUESTED.compareAndSet(this, previousState, nextRequested)) {
+							if (this.sourceMode == (Fuseable.ASYNC | Fuseable.THREAD_BARRIER)) {
+								s.request(n);
+							}
+							break;
+						}
+					}
+
+					// check if this is the first request from the downstream
+					if (previousState == Long.MIN_VALUE) {
+						// check the mode and fusion mode
+						if (this.sourceMode == Fuseable.NONE) {
+							this.s.request(1);
+						}
 					}
 				}
-
-				// check if this is the first request from the downstream
-				if (previousState == Long.MIN_VALUE) {
-					// check the mode and fusion mode
-					if (this.sourceMode == Fuseable.NONE) {
-						this.s.request(1);
-					}
+				else if (this.sourceMode == (Fuseable.ASYNC | Fuseable.THREAD_BARRIER)) {
+					s.request(n);
 				}
 
 				// WIP also guards during request and onError is possible
@@ -656,7 +664,7 @@ final class FluxPublishOn<T> extends InternalFluxOperator<T, T> implements Fusea
 		public int requestFusion(int requestedMode) {
 			if (sourceMode != Fuseable.NONE && (requestedMode & Fuseable.ASYNC) != 0) {
 				outputFused = true;
-				return Fuseable.ASYNC;
+				return Fuseable.ASYNC | Fuseable.THREAD_BARRIER;
 			}
 			return Fuseable.NONE;
 		}
