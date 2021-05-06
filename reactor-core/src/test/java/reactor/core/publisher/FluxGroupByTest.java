@@ -358,6 +358,7 @@ public class FluxGroupByTest extends
 		Flux.range(1, 1_000_000)
 		    .groupBy(v -> (v & 1))
 		    .flatMap(g -> g)
+		    .prefetch()
 		    .publishOn(Schedulers.fromExecutorService(forkJoinPool))
 		    .subscribe(ts);
 
@@ -376,6 +377,7 @@ public class FluxGroupByTest extends
 		Flux.range(1, 1_000_000)
 		    .groupBy(v -> (v & 1))
 		    .flatMap(g -> g.hide())
+		    .prefetch()
 		    .publishOn(Schedulers.fromExecutorService(forkJoinPool))
 		    .subscribe(ts);
 
@@ -437,11 +439,13 @@ public class FluxGroupByTest extends
 			    @Override
 			    public void onNext(GroupedFlux<Integer, Integer> t) {
 				    if (t.key() == 0) {
-					    t.publishOn(Schedulers.fromExecutorService(forkJoinPool))
+					    t.prefetch()
+					     .publishOn(Schedulers.fromExecutorService(forkJoinPool))
 					     .subscribe(ts1);
 				    }
 				    else {
-					    t.publishOn(Schedulers.fromExecutorService(forkJoinPool))
+					    t.prefetch()
+					     .publishOn(Schedulers.fromExecutorService(forkJoinPool))
 					     .subscribe(ts2);
 				    }
 			    }
@@ -631,11 +635,13 @@ public class FluxGroupByTest extends
 			    public void onNext(GroupedFlux<Integer, Integer> t) {
 				    if (t.key() == 0) {
 					    t.hide()
+					     .prefetch()
 					     .publishOn(Schedulers.fromExecutorService(forkJoinPool))
 					     .subscribe(ts1);
 				    }
 				    else {
 					    t.hide()
+					     .prefetch()
 					     .publishOn(Schedulers.fromExecutorService(forkJoinPool))
 					     .subscribe(ts2);
 				    }
@@ -682,6 +688,7 @@ public class FluxGroupByTest extends
 
 		Flux.range(0, 1_000_000)
 		    .hide()
+		    .prefetch()
 		    .publishOn(Schedulers.fromExecutorService(forkJoinPool))
 		    .groupBy(v -> v & 1)
 		    .subscribe(new CoreSubscriber<GroupedFlux<Integer, Integer>>() {
@@ -694,11 +701,13 @@ public class FluxGroupByTest extends
 			    public void onNext(GroupedFlux<Integer, Integer> t) {
 				    if (t.key() == 0) {
 					    t.hide()
+					     .prefetch()
 					     .publishOn(Schedulers.fromExecutorService(forkJoinPool))
 					     .subscribe(ts1);
 				    }
 				    else {
 					    t.hide()
+					     .prefetch()
 					     .publishOn(Schedulers.fromExecutorService(forkJoinPool))
 					     .subscribe(ts2);
 				    }
@@ -755,11 +764,13 @@ public class FluxGroupByTest extends
 			    @Override
 			    public void onNext(GroupedFlux<Integer, Integer> t) {
 				    if (t.key() == 0) {
-					    t.publishOn(Schedulers.fromExecutorService(forkJoinPool))
+					    t.prefetch()
+					     .publishOn(Schedulers.fromExecutorService(forkJoinPool))
 					     .subscribe(ts1);
 				    }
 				    else {
-					    t.publishOn(Schedulers.fromExecutorService(forkJoinPool))
+					    t.prefetch()
+					     .publishOn(Schedulers.fromExecutorService(forkJoinPool))
 					     .subscribe(ts2);
 				    }
 			    }
