@@ -6907,6 +6907,10 @@ public abstract class Flux<T> implements CorePublisher<T> {
 		return prefetch(Queues.SMALL_BUFFER_SIZE);
 	}
 
+	public final Flux<T> prefetch(boolean lazyMode) {
+		return prefetch(Queues.SMALL_BUFFER_SIZE, lazyMode);
+	}
+
 	public final Flux<T> prefetch(int prefetch) {
 		return prefetch(prefetch, false);
 	}
@@ -6920,8 +6924,8 @@ public abstract class Flux<T> implements CorePublisher<T> {
 	}
 
 	public final Flux<T> prefetch(int prefetch, int lowTide, boolean lazyMode) {
-		FluxPrefetch.RequestMode mode =
-				lazyMode ? FluxPrefetch.RequestMode.LAZY : FluxPrefetch.RequestMode.EAGER;
+		FluxPrefetch.PrefetchMode mode = lazyMode ? FluxPrefetch.PrefetchMode.LAZY :
+				FluxPrefetch.PrefetchMode.EAGER;
 
 		return onAssembly(new FluxPrefetch<>(this,
 				prefetch,
