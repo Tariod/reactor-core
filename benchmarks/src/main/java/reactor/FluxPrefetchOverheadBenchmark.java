@@ -1,9 +1,8 @@
 package reactor;
 
 import java.util.Arrays;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.function.BiFunction;
+import java.util.function.Function;
 
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
@@ -24,25 +23,22 @@ import reactor.core.publisher.Flux;
 import reactor.core.scheduler.Schedulers;
 
 @BenchmarkMode(Mode.Throughput)
-@Warmup(iterations = 5)
+@Warmup(iterations = 3)
 @Measurement(iterations = 5, time = 5, timeUnit = TimeUnit.SECONDS)
 @OutputTimeUnit(TimeUnit.SECONDS)
 @Fork(1)
 @State(Scope.Thread)
 public class FluxPrefetchOverheadBenchmark {
 
-	//	"0"
 	@Param({"10", "100", "1000", "100000"})
 	public int sourceSize;
 
 	@Param({"NONE", "SYNC", "ASYNC"})
 	public String sourceType;
 
-	// @Param()
-	// computations - false
-	// computations - true
+	@Param({"true", "false"})
+	public boolean prefetchMode;
 
-	// Add "Batch"
 	@Param({"One", "Unbound"})
 	public String subscriberType;
 
@@ -51,7 +47,7 @@ public class FluxPrefetchOverheadBenchmark {
 	Flux<Integer> publishOnWithPrefetchFlux;
 	Flux<Integer> prefetchFlux;
 
-	BiFunction<CountDownLatch, Blackhole, Subscriber<Integer>> subscriberSupplier;
+	Function<Blackhole, Subscriber<Integer>> subscriberSupplier;
 
 	@Setup
 	public void setup() {
@@ -59,10 +55,9 @@ public class FluxPrefetchOverheadBenchmark {
 
 		publishOnOldFlux = dataSource.publishOnOld(Schedulers.immediate());
 		publishOnFlux = dataSource.publishOn(Schedulers.immediate());
-//		TODO: requestMode
-		publishOnWithPrefetchFlux = dataSource.prefetch()
+		publishOnWithPrefetchFlux = dataSource.prefetch(prefetchMode)
 		                                      .publishOn(Schedulers.immediate());
-		prefetchFlux = dataSource.prefetch();
+		prefetchFlux = dataSource.prefetch(prefetchMode);
 
 		subscriberSupplier = getSubscriberSupplier(subscriberType);
 	}
@@ -78,17 +73,17 @@ public class FluxPrefetchOverheadBenchmark {
 				return publisher.onBackpressureBuffer();
 			case "SYNC":
 				return publisher;
+			case "NONE":
 			default:
 				return publisher.hide();
 		}
 	}
 
-	private BiFunction<CountDownLatch, Blackhole, Subscriber<Integer>> getSubscriberSupplier(
-			String subscriberType) {
-		return (CountDownLatch latch, Blackhole bh) -> {
+	private Function<Blackhole, Subscriber<Integer>> getSubscriberSupplier(String subscriberType) {
+		return (Blackhole bh) -> {
 			switch (subscriberType) {
 				case ("One"):
-					return new BenchmarkSubscriber(bh, latch) {
+					return new BenchmarkSubscriber(bh) {
 						@Override
 						protected void hookOnSubscribe(Subscription s) {
 							request(1);
@@ -102,7 +97,7 @@ public class FluxPrefetchOverheadBenchmark {
 					};
 				case ("Unbound"):
 				default:
-					return new BenchmarkSubscriber(bh, latch) {
+					return new BenchmarkSubscriber(bh) {
 						@Override
 						protected void hookOnSubscribe(Subscription s) {
 							request(Long.MAX_VALUE);
@@ -114,44 +109,34 @@ public class FluxPrefetchOverheadBenchmark {
 
 	@Benchmark
 	public void oldPublishOnPerformance(Blackhole bh) throws InterruptedException {
-		CountDownLatch latch = new CountDownLatch(1);
-		Subscriber<Integer> s = subscriberSupplier.apply(latch, bh);
+		Subscriber<Integer> s = subscriberSupplier.apply(bh);
 		publishOnOldFlux.subscribe(s);
-		latch.await();
 	}
 
 	@Benchmark
 	public void newPublishOnPerformance(Blackhole bh) throws InterruptedException {
-		CountDownLatch latch = new CountDownLatch(1);
-		Subscriber<Integer> s = subscriberSupplier.apply(latch, bh);
+		Subscriber<Integer> s = subscriberSupplier.apply(bh);
 		publishOnFlux.subscribe(s);
-		latch.await();
 	}
 
 	@Benchmark
 	public void newPublishOnWithPrefetchFlux(Blackhole bh) throws InterruptedException {
-		CountDownLatch latch = new CountDownLatch(1);
-		Subscriber<Integer> s = subscriberSupplier.apply(latch, bh);
+		Subscriber<Integer> s = subscriberSupplier.apply(bh);
 		publishOnWithPrefetchFlux.subscribe(s);
-		latch.await();
 	}
 
 	@Benchmark
 	public void prefetchFlux(Blackhole bh) throws InterruptedException {
-		CountDownLatch latch = new CountDownLatch(1);
-		Subscriber<Integer> s = subscriberSupplier.apply(latch, bh);
+		Subscriber<Integer> s = subscriberSupplier.apply(bh);
 		prefetchFlux.subscribe(s);
-		latch.await();
 	}
 
 	static class BenchmarkSubscriber extends BaseSubscriber<Integer> {
 
-		final Blackhole      blackhole;
-		final CountDownLatch latch;
+		final Blackhole blackhole;
 
-		BenchmarkSubscriber(Blackhole blackhole, CountDownLatch latch) {
+		BenchmarkSubscriber(Blackhole blackhole) {
 			this.blackhole = blackhole;
-			this.latch = latch;
 		}
 
 		@Override
@@ -162,13 +147,11 @@ public class FluxPrefetchOverheadBenchmark {
 		@Override
 		protected void hookOnError(Throwable throwable) {
 			blackhole.consume(throwable);
-			latch.countDown();
 		}
 
 		@Override
 		protected void hookOnComplete() {
 			blackhole.consume(true);
-			latch.countDown();
 		}
 	}
 }
