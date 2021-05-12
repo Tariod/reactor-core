@@ -23,7 +23,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.scheduler.Schedulers;
 
 @BenchmarkMode(Mode.Throughput)
-@Warmup(iterations = 3)
+@Warmup(iterations = 5)
 @Measurement(iterations = 5, time = 5, timeUnit = TimeUnit.SECONDS)
 @OutputTimeUnit(TimeUnit.SECONDS)
 @Fork(1)
@@ -108,25 +108,25 @@ public class FluxPrefetchOverheadBenchmark {
 	}
 
 	@Benchmark
-	public void oldPublishOnPerformance(Blackhole bh) throws InterruptedException {
+	public void oldPublishOnPerformance(Blackhole bh) {
 		Subscriber<Integer> s = subscriberSupplier.apply(bh);
 		publishOnOldFlux.subscribe(s);
 	}
 
 	@Benchmark
-	public void newPublishOnPerformance(Blackhole bh) throws InterruptedException {
+	public void newPublishOnPerformance(Blackhole bh) {
 		Subscriber<Integer> s = subscriberSupplier.apply(bh);
 		publishOnFlux.subscribe(s);
 	}
 
 	@Benchmark
-	public void newPublishOnWithPrefetchFlux(Blackhole bh) throws InterruptedException {
+	public void newPublishOnWithPrefetchFlux(Blackhole bh) {
 		Subscriber<Integer> s = subscriberSupplier.apply(bh);
 		publishOnWithPrefetchFlux.subscribe(s);
 	}
 
 	@Benchmark
-	public void prefetchFlux(Blackhole bh) throws InterruptedException {
+	public void prefetchFlux(Blackhole bh) {
 		Subscriber<Integer> s = subscriberSupplier.apply(bh);
 		prefetchFlux.subscribe(s);
 	}
