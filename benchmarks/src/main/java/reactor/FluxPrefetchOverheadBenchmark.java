@@ -1,6 +1,7 @@
 package reactor;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
@@ -23,11 +24,11 @@ import reactor.core.publisher.Flux;
 import reactor.core.scheduler.Schedulers;
 
 @BenchmarkMode(Mode.Throughput)
-@Warmup(iterations = 5)
-@Measurement(iterations = 5, time = 5, timeUnit = TimeUnit.SECONDS)
+@Warmup(iterations = 10, time = 5)
+@Measurement(iterations = 20, time = 5)
 @OutputTimeUnit(TimeUnit.SECONDS)
-@Fork(1)
-@State(Scope.Thread)
+@Fork(2)
+@State(Scope.Benchmark)
 public class FluxPrefetchOverheadBenchmark {
 
 	@Param({"10", "100", "1000", "100000"})
@@ -62,9 +63,8 @@ public class FluxPrefetchOverheadBenchmark {
 		subscriberSupplier = getSubscriberSupplier(subscriberType);
 	}
 
-	private Flux<Integer> getDataSource(int sourceSize, String sourceType) {
-		Integer[] array = new Integer[sourceSize];
-		Arrays.fill(array, 666);
+	private Flux<Integer> getDataSource(int size, String sourceType) {
+		Integer[] array = sources.get(size);
 
 		Flux<Integer> publisher = Flux.fromArray(array);
 
@@ -83,26 +83,10 @@ public class FluxPrefetchOverheadBenchmark {
 		return (Blackhole bh) -> {
 			switch (subscriberType) {
 				case ("One"):
-					return new BenchmarkSubscriber(bh) {
-						@Override
-						protected void hookOnSubscribe(Subscription s) {
-							request(1);
-						}
-
-						@Override
-						protected void hookOnNext(Integer v) {
-							super.hookOnNext(v);
-							request(1);
-						}
-					};
+					return new OneByOneSubscriber(bh);
 				case ("Unbound"):
 				default:
-					return new BenchmarkSubscriber(bh) {
-						@Override
-						protected void hookOnSubscribe(Subscription s) {
-							request(Long.MAX_VALUE);
-						}
-					};
+					return new UnboundedSubscriber(bh);
 			}
 		};
 	}
@@ -131,12 +115,63 @@ public class FluxPrefetchOverheadBenchmark {
 		prefetchFlux.subscribe(s);
 	}
 
-	static class BenchmarkSubscriber extends BaseSubscriber<Integer> {
+	static int[] sourceSizes = new int[]{10, 100, 1000, 100000};
+
+	static HashMap<Integer, Integer[]> sources = new HashMap<>();
+
+	static {
+		for (int size : sourceSizes) {
+			createSource(size);
+		}
+	}
+
+	static private void createSource(int sourceSize) {
+		Integer[] array = new Integer[sourceSize];
+		Arrays.fill(array, 666);
+		sources.put(sourceSize, array);
+	}
+
+	static class OneByOneSubscriber extends BaseSubscriber<Integer> {
 
 		final Blackhole blackhole;
 
-		BenchmarkSubscriber(Blackhole blackhole) {
+		OneByOneSubscriber(Blackhole blackhole) {
 			this.blackhole = blackhole;
+		}
+
+		@Override
+		protected void hookOnSubscribe(Subscription subscription) {
+			request(1);
+		}
+
+		@Override
+		protected void hookOnNext(Integer v) {
+			blackhole.consume(v);
+			request(1);
+		}
+
+		@Override
+		protected void hookOnError(Throwable throwable) {
+			blackhole.consume(throwable);
+		}
+
+		@Override
+		protected void hookOnComplete() {
+			blackhole.consume(true);
+		}
+	}
+
+	static class UnboundedSubscriber extends BaseSubscriber<Integer> {
+
+		final Blackhole blackhole;
+
+		UnboundedSubscriber(Blackhole blackhole) {
+			this.blackhole = blackhole;
+		}
+
+		@Override
+		protected void hookOnSubscribe(Subscription subscription) {
+			request(Long.MAX_VALUE);
 		}
 
 		@Override
