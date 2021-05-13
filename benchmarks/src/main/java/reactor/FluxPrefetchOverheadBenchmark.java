@@ -19,7 +19,7 @@ import org.openjdk.jmh.annotations.Warmup;
 import org.openjdk.jmh.infra.Blackhole;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.core.publisher.BaseSubscriber;
+import reactor.core.CoreSubscriber;
 import reactor.core.publisher.Flux;
 import reactor.core.scheduler.Schedulers;
 
@@ -131,61 +131,67 @@ public class FluxPrefetchOverheadBenchmark {
 		sources.put(sourceSize, array);
 	}
 
-	static class OneByOneSubscriber extends BaseSubscriber<Integer> {
+	static class OneByOneSubscriber implements CoreSubscriber<Integer> {
 
 		final Blackhole blackhole;
+
+		Subscription subscription;
 
 		OneByOneSubscriber(Blackhole blackhole) {
 			this.blackhole = blackhole;
 		}
 
 		@Override
-		protected void hookOnSubscribe(Subscription subscription) {
-			request(1);
+		public void onSubscribe(Subscription s) {
+			subscription = s;
+			subscription.request(1);
 		}
 
 		@Override
-		protected void hookOnNext(Integer v) {
+		public void onNext(Integer v) {
 			blackhole.consume(v);
-			request(1);
+			subscription.request(1);
 		}
 
 		@Override
-		protected void hookOnError(Throwable throwable) {
-			blackhole.consume(throwable);
+		public void onError(Throwable t) {
+			blackhole.consume(t);
 		}
 
 		@Override
-		protected void hookOnComplete() {
+		public void onComplete() {
 			blackhole.consume(true);
 		}
 	}
 
-	static class UnboundedSubscriber extends BaseSubscriber<Integer> {
+	static class UnboundedSubscriber implements CoreSubscriber<Integer> {
 
 		final Blackhole blackhole;
+
+		Subscription subscription;
 
 		UnboundedSubscriber(Blackhole blackhole) {
 			this.blackhole = blackhole;
 		}
 
 		@Override
-		protected void hookOnSubscribe(Subscription subscription) {
-			request(Long.MAX_VALUE);
+		public void onSubscribe(Subscription s) {
+			subscription = s;
+			subscription.request(Long.MAX_VALUE);
 		}
 
 		@Override
-		protected void hookOnNext(Integer v) {
+		public void onNext(Integer v) {
 			blackhole.consume(v);
 		}
 
 		@Override
-		protected void hookOnError(Throwable throwable) {
-			blackhole.consume(throwable);
+		public void onError(Throwable t) {
+			blackhole.consume(t);
 		}
 
 		@Override
-		protected void hookOnComplete() {
+		public void onComplete() {
 			blackhole.consume(true);
 		}
 	}
